@@ -22,7 +22,7 @@ import pylab
 logging.basicConfig(level=logging.INFO)
 
 def autoMesh(snapshotDir, workflowWorkingDir, autoMeshWorkingDir, loopMaxWidth=300, loopMinWidth=150, prefix="snapshot", debug=False, findLargestMesh=False):
-    os.chmod(autoMeshWorkingDir, 0755)
+    os.chmod(autoMeshWorkingDir, 0o755)
     background_image = os.path.join(snapshotDir, "%s_background.png" % prefix)
     dictLoop = {}
     for omega in [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]:
@@ -57,7 +57,7 @@ def autoMesh(snapshotDir, workflowWorkingDir, autoMeshWorkingDir, loopMaxWidth=3
             pylab.axes(extent)
             pylab.savefig(os.path.join(autoMeshWorkingDir, "shapePlot_%03d.png" % omega))
             pyplot.close()
-            dictLoop["%d" % omega] = (listIndex, listUpper, listLower)
+        dictLoop["%d" % omega] = (listIndex, listUpper, listLower)
     areTheSameImage = checkForCorrelatedImages(dictLoop)
     image000Path = os.path.join(snapshotDir, "%s_%03d.png" % (prefix, 0))
     ny, nx = scipy.misc.imread(image000Path, flatten=True).shape
@@ -159,7 +159,7 @@ def findOptimalMesh(dictLoop, snapshotDir, nx, ny, autoMeshWorkingDir, loopMaxWi
     if meshXmax is None:
         meshXmax = loopMaxWidth
     meshXmin = meshXmax - loopMaxWidth
-    print meshXmin, meshXmax
+    print(meshXmin, meshXmax)
     nPhi = 0
     for omega in [0, 30, 60, 90, 120, 150]:
         strOmega1 = "%d" % omega
@@ -168,8 +168,8 @@ def findOptimalMesh(dictLoop, snapshotDir, nx, ny, autoMeshWorkingDir, loopMaxWi
         (arrayIndex2, arrayUpper2, arrayLower2) = dictLoop[strOmega2]
         arrayIndex = numpy.arange(meshXmin, meshXmax - 1)
         # Exclude regio in horizontal center
-        xExcludMin = nx / 2 - 20
-        xExcludMax = nx / 2 + 20
+        xExcludMin = numpy.float64(nx / 2 - 20)
+        xExcludMax = numpy.float64(nx / 2 + 20)
         indices1 = numpy.where(((arrayIndex1 > meshXmin) & (arrayIndex1 < xExcludMin)) |
                                ((arrayIndex1 < meshXmax) & (arrayIndex1 > xExcludMax)))
         indices2 = numpy.where(((arrayIndex2 > meshXmin) & (arrayIndex2 < xExcludMin)) |
@@ -367,3 +367,11 @@ def gridInfoToPixels(beamline, grid_info, pixelsPerMM):
     dxPixels = grid_info["dx_mm"] * pixelsPerMM
     dyPixels = grid_info["dy_mm"] * pixelsPerMM
     return (x1Pixels, y1Pixels, dxPixels, dyPixels)
+
+
+def cmp(a, b):
+    """
+    Python3 doesn't have cmp, see:
+    https://codegolf.stackexchange.com/questions/49778/how-can-i-use-cmpa-b-with-python3
+    """
+    return (a > b) - (a < b)
