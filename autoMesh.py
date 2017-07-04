@@ -1,3 +1,26 @@
+# coding: utf-8
+# /*##########################################################################
+# Copyright (C) 2017 European Synchrotron Radiation Facility
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# ############################################################################*/
 """
 Workflow library module for grid / mesh 
 """
@@ -15,7 +38,7 @@ import scipy.misc
 import scipy.ndimage
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg', warn=False)
 import matplotlib.pyplot as pyplot
 import pylab
 
@@ -28,7 +51,7 @@ def autoMesh(snapshotDir, workflowWorkingDir, autoMeshWorkingDir, loopMaxWidth=3
     for omega in [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]:
         logging.info("Analysing snapshot image at omega = %d degrees" % omega)
         imagePath = os.path.join(snapshotDir, "%s_%03d.png" % (prefix, omega))
-        raw_img = scipy.misc.imread(imagePath, flatten=True)
+        raw_img = readImage(imagePath)
 
         if debug:
             plot_img(raw_img, os.path.join(autoMeshWorkingDir, "rawImage_%03d.png" % omega))
@@ -368,6 +391,18 @@ def gridInfoToPixels(beamline, grid_info, pixelsPerMM):
     dyPixels = grid_info["dy_mm"] * pixelsPerMM
     return (x1Pixels, y1Pixels, dxPixels, dyPixels)
 
+def readImage(imagePath):
+    if imagePath.endswith(".png"):
+        image = scipy.misc.imread(imagePath, flatten=True)
+    elif imagePath.endswith(".npy"):
+        image = numpy.load(imagePath)
+    return image
+
+def plotImage(image):
+    imgshape = image.shape
+    extent = (0, imgshape[1], 0, imgshape[0])
+    pyplot.imshow(image, extent=extent)
+    pyplot.show()
 
 def cmp(a, b):
     """
