@@ -94,6 +94,10 @@ def autoMesh(snapshotDir, workflowWorkingDir, autoMeshWorkingDir, loopMaxWidth=3
 
 
 
+def subtractBackground(image, backgroundImage):
+    return numpy.abs(image - backgroundImage)
+
+
 def filterDifferenceImage(differenceImage, thresholdValue=30):
     """
     First applies a threshold of default value 30. Then erodes the image twice, and then dilates the
@@ -402,6 +406,14 @@ def plotImage(image):
     imgshape = image.shape
     extent = (0, imgshape[1], 0, imgshape[0])
     pyplot.imshow(image, extent=extent)
+    pyplot.show()
+
+def plotLoopExam(image, listIndex, listLower, listUpper):
+    pyplot.plot(listIndex, listUpper, '+')
+    pyplot.plot(listIndex, listLower, '+')
+    imgshape = image.shape
+    extent = (0, imgshape[1], 0, imgshape[0])
+    # pyplot.axes(extent)
     pyplot.show()
 
 def cmp(a, b):
