@@ -168,6 +168,8 @@ def findOptimalMesh(dictLoop, snapshotDir, nx, ny, autoMeshWorkingDir, loopMaxWi
     angleMaxThickness = None
     meshXmax = None
     stdPhiz = None
+    loopMinWidth = int(loopMinWidth)
+    loopMaxWidth = int(loopMaxWidth)
     for omega in [0, 30, 60, 90, 120, 150]:
         strOmega1 = "%d" % omega
         strOmega2 = "%03d" % (omega + 180)
@@ -361,8 +363,8 @@ def plot_img(img, plotPath):
     pyplot.close()
     return
 
-def plotMesh(beamline, imagePath, grid_info, pixelsPerMM, destinationDir, signPhiy=1, fileName="snapshot_automesh.png"):
-    (x1Pixels, y1Pixels, dxPixels, dyPixels) = gridInfoToPixels(beamline, grid_info, pixelsPerMM)
+def plotMesh(imagePath, grid_info, pixelsPerMM, destinationDir, signPhiy=1, fileName="snapshot_automesh.png"):
+    (x1Pixels, y1Pixels, dxPixels, dyPixels) = gridInfoToPixels(grid_info, pixelsPerMM)
     img = scipy.misc.imread(imagePath, flatten=True)
     imgshape = img.shape
     extent = (0, imgshape[1], 0, imgshape[0])
@@ -385,10 +387,11 @@ def plotMesh(beamline, imagePath, grid_info, pixelsPerMM, destinationDir, signPh
     axes.set_xlim([0, imgshape[1]])
     axes.set_ylim([0, imgshape[0]])
     pylab.savefig(meshSnapShotPath, bbox_inches='tight')
+    pylab.show()
     pylab.close()
     return meshSnapShotPath
 
-def gridInfoToPixels(beamline, grid_info, pixelsPerMM):
+def gridInfoToPixels(grid_info, pixelsPerMM):
     x1Pixels = grid_info["x1"] * pixelsPerMM
     y1Pixels = grid_info["y1"] * pixelsPerMM
     dxPixels = grid_info["dx_mm"] * pixelsPerMM

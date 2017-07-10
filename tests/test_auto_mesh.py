@@ -78,7 +78,6 @@ class Test(unittest.TestCase):
         self.assertTrue(areTheSameImage)
 
     def test_autoMesh(self):
-        beamline = "simulator"
         snapshotDir = os.path.join(self.testDataDirectory, "snapshots_20141128-084026")
         workingDir = tempfile.mkdtemp(prefix="autoMesh_", dir="/tmp_14_days/svensson")
         print(workingDir)
@@ -117,7 +116,7 @@ class Test(unittest.TestCase):
                 "steps_y": steps_y}
         print("Auto grid_info: %r" % grid_info)
         resultImagePath = os.path.join(workingDir, "snapshot_automesh.png")
-        autoMesh.plotMesh(beamline, imagePath, grid_info, PIXELS_PER_MM, workingDir)
+        autoMesh.plotMesh(imagePath, grid_info, PIXELS_PER_MM, workingDir)
         os.system("display %s" % resultImagePath)
 
 
