@@ -146,7 +146,7 @@ class Test(unittest.TestCase):
 
     def test_autoMesh(self):
         snapshot_dir = os.path.join(self.testDataDirectory, "snapshots_20141128-084026")
-        working_dir = tempfile.mkdtemp(prefix="autoMesh_", dir="/tmp_14_days/svensson")
+        working_dir = tempfile.mkdtemp(prefix="autoMesh_")
         print(working_dir)
         os.chmod(working_dir, 0o755)
         _ = snapshot_dir[-22:-7]
