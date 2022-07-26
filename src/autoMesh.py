@@ -484,6 +484,7 @@ def plotMesh(
     destination_dir,
     sign_phiy=1,
     file_name="snapshot_automesh.png",
+    show_plot=False,
 ):
     (x1_pixels, y1_pixels, dx_pixels, dy_pixels) = gridInfoToPixels(
         grid_info, pixels_per_mm
@@ -510,7 +511,8 @@ def plotMesh(
     axes.set_xlim([0, imgshape[1]])
     axes.set_ylim([0, imgshape[0]])
     pylab.savefig(mesh_snap_shot_path, bbox_inches="tight")
-    pylab.show()
+    if show_plot:
+        pylab.show()
     pylab.close()
     return mesh_snap_shot_path
 
