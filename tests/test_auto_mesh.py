@@ -23,11 +23,10 @@
 # ############################################################################*/
 
 import os
-import sys
-
+import json
+import shutil
 import unittest
 import tempfile
-import json
 
 import autoMesh
 
@@ -38,10 +37,11 @@ class Test(unittest.TestCase):
     def setUp(self):
         path = os.path.abspath(__file__)
         self.test_data_directory = os.path.join(os.path.dirname(path), "data")
-        self.working_dir = tempfile.mkdtemp(
-            prefix="autoMesh_", dir="/tmp_14_days/svensson"
-        )
+        self.working_dir = tempfile.mkdtemp(prefix="autoMesh_")
         os.chmod(self.working_dir, 0o755)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.working_dir)
 
     def test_checkForCorrelatedImages(self):
         test_data_path1 = os.path.join(self.test_data_directory, "dictLoop_1.json")
