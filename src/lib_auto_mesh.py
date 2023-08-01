@@ -1,48 +1,12 @@
-# coding: utf-8
-# /*##########################################################################
-# Copyright (C) 2017 European Synchrotron Radiation Facility
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-#
-# ############################################################################*/
-"""
-Workflow library module for grid / mesh
-"""
-
-__author__ = "Olof Svensson"
-__contact__ = "svensson@esrf.eu"
-__copyright__ = "ESRF, 2017"
-__updated__ = "2017-06-23"
-
-
 import os
+import math
 import numpy
+import pylab
+import scipy
 import logging
 import imageio
-import scipy.ndimage
-
-# import matplotlib
-# matplotlib.use("Agg", warn=False)
+import circle_fit
 import matplotlib.pyplot as pyplot
-import pylab
-
-logging.basicConfig(level=logging.INFO)
 
 
 def autoMesh(
@@ -93,15 +57,15 @@ def autoMesh(
             )
 
         #        print numpyImage
-        filteredImage = filterDifferenceImage(difference_image)
+        filtered_image = filterDifferenceImage(difference_image)
         if debug:
             plot_img(
-                filteredImage,
+                filtered_image,
                 plot_path=os.path.join(
                     auto_mesh_working_dir, "filteredImage_%03d.png" % omega
                 ),
             )
-        (list_index, list_upper, list_lower) = loopExam(filteredImage)
+        (list_index, list_upper, list_lower) = loopExam(filtered_image)
         if debug:
             pylab.plot(list_index, list_upper, "+")
             pylab.plot(list_index, list_lower, "+")
@@ -155,30 +119,121 @@ def autoMesh(
     )
 
 
+def findDeltaToCentre(
+    snapshot_dir,
+    auto_mesh_working_dir,
+    prefix="snapshot",
+    loop_width=100,
+    do_circle_fit=False,
+    debug=False,
+    is_vertical_axis=False,
+):
+    os.chmod(auto_mesh_working_dir, 0o755)
+    background_image = os.path.join(snapshot_dir, "%s_background.png" % prefix)
+    # Get size of image
+    background_colour = imageio.v3.imread(background_image)
+    background = rgb2gray(background_colour)
+    image_size = background.shape
+    dict_loop = {}
+    for omega in [0, 90, 180, 270]:
+        logging.info("Analysing snapshot image at omega = %d degrees" % omega)
+        image_path = os.path.join(snapshot_dir, "%s_%03d.png" % (prefix, omega))
+        raw_img = readImage(image_path)
+        if background_image.endswith(".npy"):
+            background = numpy.load(background_image)
+        else:
+            background = imageio.imread(background_image, as_gray=True)
+        difference_image = numpy.abs(background - raw_img)
+        filtered_image = filterDifferenceImage(difference_image)
+        (list_index, list_upper, list_lower) = loopExam(filtered_image)
+        dict_loop["%d" % omega] = (list_index, list_upper, list_lower)
+    # areTheSameImage = checkForCorrelatedImages(dict_loop)
+    image000_path = os.path.join(snapshot_dir, "%s_%03d.png" % (prefix, 0))
+    ny, nx, _ = imageio.v3.imread(image000_path).shape
+    delta_x, delta_y, delta_z = findCentrePin(
+        dict_loop,
+        snapshot_dir,
+        nx,
+        ny,
+        auto_mesh_working_dir,
+        do_circle_fit=do_circle_fit,
+        debug=debug,
+        isVerticalAxis=is_vertical_axis,
+        image_size=image_size,
+        loop_width=loop_width,
+    )
+    return delta_x, delta_y, delta_z
+
+
+def findCentrePin(
+    dict_loop,
+    snapshotDir,
+    nx,
+    ny,
+    auto_mesh_working_dir,
+    loop_width=100,
+    image_size=None,
+    do_circle_fit=False,
+    debug=False,
+    isVerticalAxis=False,
+):
+    dict_vertical = {}
+    list_horizontal = []
+    for omega in [0, 90, 180, 270]:
+        str_omega1 = "%d" % omega
+        (list_index1, list_upper1, list_lower1) = dict_loop[str_omega1]
+        array_index1 = numpy.array(list_index1)
+        index_max = len(array_index1)
+        if index_max == 0:
+            raise RuntimeError("No pin found for omega {0}!".format(str_omega1))
+        index_min = index_max - int(loop_width / 3)
+        index_loop = list_index1[index_min:index_max - 1]
+        array_upper1 = numpy.array(list_upper1[index_min:index_max - 1])
+        array_lower1 = numpy.array(list_lower1[index_min:index_max - 1])
+        mean_array = (array_lower1 + array_upper1) / 2
+        pylab.plot(index_loop, array_upper1, "+", color="blue")
+        pylab.plot(index_loop, array_lower1, "+", color="blue")
+
+        if do_circle_fit:
+            data = []
+            for index, x in enumerate(index_loop):
+                y1 = array_upper1[index]
+                y2 = array_lower1[index]
+                data.append([x, y1])
+                data.append([x, y2])
+            circle_x = []
+            circle_y = []
+            xc, yc, r, _ = circle_fit.least_squares_circle(data)
+            for theta in range(0, 360, 5):
+                x = xc + r * math.cos(theta)
+                y = yc + r * math.sin(theta)
+                circle_x.append(x)
+                circle_y.append(y)
+            pylab.plot(circle_x, circle_y, ".", color="red")
+        else:
+            pylab.plot(index_loop, mean_array, "+", color="green")
+            xc = list_index1[-1] - int(loop_width / 2)
+            yc = numpy.mean(mean_array)
+
+        pylab.plot([xc], [yc], "+", color="black")
+        pylab.gca().set_aspect("equal")
+        pylab.savefig(
+            os.path.join(auto_mesh_working_dir, "shapePlot_mean_%03d.png" % (omega))
+        )
+        pylab.close()
+        # Calculate deltaZ (phiy)
+        deltaZ = int(image_size[1] / 2) - xc
+        dict_vertical[str_omega1] = yc
+        list_horizontal.append(deltaZ)
+
+    mean_delta_x = (dict_vertical["90"] - dict_vertical["270"]) / 2
+    mean_delta_y = (dict_vertical["180"] - dict_vertical["0"]) / 2
+    mean_delta_z = numpy.mean(list_horizontal)
+    return mean_delta_x, mean_delta_y, mean_delta_z
+
+
 def subtractBackground(image, background_image):
     return numpy.abs(image - background_image)
-
-
-def filterDifferenceImage(difference_image, threshold_value=30):
-    """
-    First applies a threshold of default value 30.
-    Then erodes the image twice, and then dilates the image twice.
-    """
-    threshold_value = 30
-    binary_image = difference_image >= threshold_value
-    filtered_image = scipy.ndimage.morphology.binary_erosion(binary_image).astype(
-        binary_image.dtype
-    )
-    filtered_image = scipy.ndimage.morphology.binary_erosion(filtered_image).astype(
-        binary_image.dtype
-    )
-    filtered_image = scipy.ndimage.morphology.binary_dilation(filtered_image).astype(
-        binary_image.dtype
-    )
-    filtered_image = scipy.ndimage.morphology.binary_dilation(filtered_image).astype(
-        binary_image.dtype
-    )
-    return filtered_image
 
 
 def loopExam(filtered_image):
@@ -227,6 +282,48 @@ def checkForCorrelatedImages(dict_loop):
     return are_the_same
 
 
+def cmp(a, b):
+    """
+    Python3 doesn't have cmp, see:
+    https://codegolf.stackexchange.com/questions/49778/how-can-i-use-cmpa-b-with-python3
+    """
+    return (a > b) - (a < b)
+
+
+def rgb2gray(rgb):
+    return numpy.dot(rgb[..., :3], [0.2989, 0.5870, 0.1140])
+
+
+def readImage(image_path):
+    if image_path.endswith(".png"):
+        image = imageio.imread(image_path, as_gray=True)
+    elif image_path.endswith(".npy"):
+        image = numpy.load(image_path)
+    return image
+
+
+def filterDifferenceImage(difference_image, threshold_value=30):
+    """
+    First applies a threshold of default value 30.
+    Then erodes the image twice, and then dilates the image twice.
+    """
+    threshold_value = 30
+    binary_image = difference_image >= threshold_value
+    filtered_image = scipy.ndimage.morphology.binary_erosion(binary_image).astype(
+        binary_image.dtype
+    )
+    filtered_image = scipy.ndimage.morphology.binary_erosion(filtered_image).astype(
+        binary_image.dtype
+    )
+    filtered_image = scipy.ndimage.morphology.binary_dilation(filtered_image).astype(
+        binary_image.dtype
+    )
+    filtered_image = scipy.ndimage.morphology.binary_dilation(filtered_image).astype(
+        binary_image.dtype
+    )
+    return filtered_image
+
+
 def findOptimalMesh(
     dict_loop,
     snapshot_dir,
@@ -265,7 +362,6 @@ def findOptimalMesh(
     if mesh_xmax is None:
         mesh_xmax = loop_max_width
     mesh_xmin = mesh_xmax - loop_max_width
-    print(mesh_xmin, mesh_xmax)
     n_phi = 0
     for omega in [0, 30, 60, 90, 120, 150]:
         str_omega1 = "%d" % omega
@@ -367,13 +463,13 @@ def findOptimalMesh(
             pylab.savefig(phiz_path)
             pylab.close()
         if len(array_thickness_crop) > 0:
-            tmpMin = numpy.argmin(array_thickness_crop)
+            tmp_min = numpy.argmin(array_thickness_crop)
             #            if tmpMin > 75:
             #                tmpMin = 75
-            indexMin = indices_thickness_crop[tmpMin]
+            index_min = indices_thickness_crop[tmp_min]
             # Minimum mesh length: 150 pixels
-            list_thickness_index.append(indexMin)
-            logging.debug("Index min: %d for omega = %d" % (indexMin, omega))
+            list_thickness_index.append(index_min)
+            logging.debug("Index min: %d for omega = %d" % (index_min, omega))
     logging.debug("List of thicknesses: %r" % list_thickness_index)
     if not find_largest_mesh and len(list_thickness_index) > 0:
         max_index_thickness = max(list_thickness_index)
@@ -525,14 +621,6 @@ def gridInfoToPixels(grid_info, pixels_per_mm):
     return (x1_pixels, y1_pixels, dx_pixels, dy_pixels)
 
 
-def readImage(image_path):
-    if image_path.endswith(".png"):
-        image = imageio.imread(image_path, as_gray=True)
-    elif image_path.endswith(".npy"):
-        image = numpy.load(image_path)
-    return image
-
-
 def plotImage(image):
     imgshape = image.shape
     extent = (0, imgshape[1], 0, imgshape[0])
@@ -543,15 +631,4 @@ def plotImage(image):
 def plotLoopExam(image, listIndex, listLower, listUpper):
     pyplot.plot(listIndex, listUpper, "+")
     pyplot.plot(listIndex, listLower, "+")
-    # imgshape = image.shape
-    # extent = (0, imgshape[1], 0, imgshape[0])
-    # pyplot.axes(extent)
     pyplot.show()
-
-
-def cmp(a, b):
-    """
-    Python3 doesn't have cmp, see:
-    https://codegolf.stackexchange.com/questions/49778/how-can-i-use-cmpa-b-with-python3
-    """
-    return (a > b) - (a < b)

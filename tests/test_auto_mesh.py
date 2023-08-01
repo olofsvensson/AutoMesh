@@ -28,7 +28,7 @@ import shutil
 import unittest
 import tempfile
 
-import autoMesh
+import lib_auto_mesh
 
 SCISOFT_DIR = "/scisoft/pxsoft/data/WORKFLOW_TEST_DATA/id30a1/snapshots"
 
@@ -48,12 +48,12 @@ class Test(unittest.TestCase):
         f = open(test_data_path1)
         dict_loop = json.loads(f.read())
         f.close()
-        self.assertTrue(autoMesh.checkForCorrelatedImages(dict_loop))
+        self.assertTrue(lib_auto_mesh.checkForCorrelatedImages(dict_loop))
         test_data_path2 = os.path.join(self.test_data_directory, "dictLoop_2.json")
         f = open(test_data_path2)
         dict_loop = json.loads(f.read())
         f.close()
-        self.assertFalse(autoMesh.checkForCorrelatedImages(dict_loop))
+        self.assertFalse(lib_auto_mesh.checkForCorrelatedImages(dict_loop))
 
     def test_autoMesh_identicalImages_1(self):
         snapshot_dir1 = os.path.join(self.test_data_directory, "snapshots_sameimage_1")
@@ -67,7 +67,7 @@ class Test(unittest.TestCase):
             std_phiz,
             image_path,
             are_the_same_image,
-        ) = autoMesh.autoMesh(
+        ) = lib_auto_mesh.autoMesh(
             snapshot_dir=snapshot_dir1,
             workflow_working_dir=self.working_dir,
             auto_mesh_working_dir=self.working_dir,
@@ -97,7 +97,7 @@ class Test(unittest.TestCase):
             std_phiz,
             image_path,
             are_the_same_image,
-        ) = autoMesh.autoMesh(
+        ) = lib_auto_mesh.autoMesh(
             snapshot_dir=snapshot_dir2,
             workflow_working_dir=self.working_dir,
             auto_mesh_working_dir=self.working_dir,
@@ -127,7 +127,7 @@ class Test(unittest.TestCase):
             std_phiz,
             image_path,
             are_the_same_image,
-        ) = autoMesh.autoMesh(
+        ) = lib_auto_mesh.autoMesh(
             snapshot_dir=snapshot_dir3,
             workflow_working_dir=self.working_dir,
             auto_mesh_working_dir=self.working_dir,
@@ -157,7 +157,7 @@ class Test(unittest.TestCase):
             std_phiz,
             image_path,
             are_the_same_image,
-        ) = autoMesh.autoMesh(
+        ) = lib_auto_mesh.autoMesh(
             snapshot_dir=snapshot_dir4,
             workflow_working_dir=self.working_dir,
             auto_mesh_working_dir=self.working_dir,
@@ -183,7 +183,7 @@ class Test(unittest.TestCase):
             std_phiz_pixels,
             image_path,
             are_the_same_image,
-        ) = autoMesh.autoMesh(
+        ) = lib_auto_mesh.autoMesh(
             snapshot_dir,
             self.working_dir,
             self.working_dir,
@@ -228,7 +228,7 @@ class Test(unittest.TestCase):
         }
         print("Auto grid_info: %r" % grid_info)
         result_image_path = os.path.join(self.working_dir, "snapshot_automesh.png")
-        autoMesh.plotMesh(
+        lib_auto_mesh.plotMesh(
             image_path, grid_info, PIXELS_PER_MM, self.working_dir, show_plot=False
         )
         # os.system("display %s" % result_image_path)
